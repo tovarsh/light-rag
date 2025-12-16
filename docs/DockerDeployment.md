@@ -39,14 +39,14 @@ LightRAG can be configured using environment variables in the `.env` file:
 
 **LLM Configuration**
 
-- `LLM_BINDING`: LLM backend to use (lollms/ollama/openai)
-- `LLM_BINDING_HOST`: LLM server host URL
+- `LLM_BINDING`: LLM backend to use (lollms/ollama/openai/gemini/vertex_ai)
+- `LLM_BINDING_HOST`: LLM server host URL or endpoint
 - `LLM_MODEL`: Model name to use
 
 **Embedding Configuration**
 
-- `EMBEDDING_BINDING`: Embedding backend (lollms/ollama/openai)
-- `EMBEDDING_BINDING_HOST`: Embedding server host URL
+- `EMBEDDING_BINDING`: Embedding backend (lollms/ollama/openai/gemini/vertex_ai)
+- `EMBEDDING_BINDING_HOST`: Embedding server host URL or endpoint
 - `EMBEDDING_MODEL`: Embedding model name
 
 **RAG Configuration**

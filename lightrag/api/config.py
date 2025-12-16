@@ -13,6 +13,8 @@ from lightrag.llm.binding_options import (
     OllamaEmbeddingOptions,
     OllamaLLMOptions,
     OpenAILLMOptions,
+    VertexAIEmbeddingOptions,
+    VertexAILLMOptions,
 )
 from lightrag.base import OllamaServerInfos
 import sys
@@ -67,6 +69,9 @@ def get_default_host(binding_type: str) -> str:
         "openai": os.getenv("LLM_BINDING_HOST", "https://api.openai.com/v1"),
         "gemini": os.getenv(
             "LLM_BINDING_HOST", "https://generativelanguage.googleapis.com"
+        ),
+        "vertex_ai": os.getenv(
+            "LLM_BINDING_HOST", "https://us-central1-aiplatform.googleapis.com"
         ),
     }
     return default_hosts.get(
@@ -232,6 +237,7 @@ def parse_args() -> argparse.Namespace:
             "azure_openai",
             "aws_bedrock",
             "gemini",
+            "vertex_ai",
         ],
         help="LLM binding type (default: from env or ollama)",
     )
@@ -247,6 +253,7 @@ def parse_args() -> argparse.Namespace:
             "aws_bedrock",
             "jina",
             "gemini",
+            "vertex_ai",
         ],
         help="Embedding binding type (default: from env or ollama)",
     )
@@ -287,6 +294,8 @@ def parse_args() -> argparse.Namespace:
                     OllamaEmbeddingOptions.add_args(parser)
                 elif sys.argv[idx + 1] == "gemini":
                     GeminiEmbeddingOptions.add_args(parser)
+                elif sys.argv[idx + 1] == "vertex_ai":
+                    VertexAIEmbeddingOptions.add_args(parser)
         except IndexError:
             pass
     else:
@@ -295,6 +304,8 @@ def parse_args() -> argparse.Namespace:
             OllamaEmbeddingOptions.add_args(parser)
         elif env_embedding_binding == "gemini":
             GeminiEmbeddingOptions.add_args(parser)
+        elif env_embedding_binding == "vertex_ai":
+            VertexAIEmbeddingOptions.add_args(parser)
 
     # Add OpenAI LLM options when llm-binding is openai or azure_openai
     if "--llm-binding" in sys.argv:
@@ -315,10 +326,14 @@ def parse_args() -> argparse.Namespace:
             idx = sys.argv.index("--llm-binding")
             if idx + 1 < len(sys.argv) and sys.argv[idx + 1] == "gemini":
                 GeminiLLMOptions.add_args(parser)
+            elif idx + 1 < len(sys.argv) and sys.argv[idx + 1] == "vertex_ai":
+                VertexAILLMOptions.add_args(parser)
         except IndexError:
             pass
     elif os.environ.get("LLM_BINDING") == "gemini":
         GeminiLLMOptions.add_args(parser)
+    elif os.environ.get("LLM_BINDING") == "vertex_ai":
+        VertexAILLMOptions.add_args(parser)
 
     args = parser.parse_args()
 

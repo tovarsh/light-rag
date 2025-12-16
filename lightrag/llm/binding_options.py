@@ -521,6 +521,69 @@ class GeminiEmbeddingOptions(BindingOptions):
     }
 
 
+@dataclass
+class VertexAILLMOptions(BindingOptions):
+    """Options for Vertex AI chat/completion models."""
+
+    _binding_name: ClassVar[str] = "vertex_ai_llm"
+
+    project_id: str | None = None
+    location: str | None = None
+    api_endpoint: str | None = None
+    credentials_path: str | None = None
+
+    # Generation parameters aligned with Vertex AI GenerationConfig
+    temperature: float = DEFAULT_TEMPERATURE
+    top_p: float | None = None
+    top_k: int | None = None
+    max_output_tokens: int | None = None
+    candidate_count: int | None = None
+    response_mime_type: str | None = None
+    stop_sequences: List[str] = field(default_factory=list)
+    safety_settings: dict | None = None
+
+    _help: ClassVar[dict[str, str]] = {
+        "project_id": "Google Cloud project ID for Vertex AI",
+        "location": "Vertex AI region (e.g., us-central1)",
+        "api_endpoint": "Custom API endpoint/host for Vertex AI",
+        "credentials_path": "Path to service account JSON credentials",
+        "temperature": "Controls randomness (0.0-2.0, higher = more creative)",
+        "top_p": "Nucleus sampling parameter (0.0-1.0)",
+        "top_k": "Top-k sampling parameter",
+        "max_output_tokens": "Maximum tokens to generate in the response",
+        "candidate_count": "Number of candidates to return",
+        "response_mime_type": "Response MIME type (e.g., application/json)",
+        "stop_sequences": 'Stop sequences (JSON array, e.g., "[\"END\"]")',
+        "safety_settings": "JSON object with Vertex AI safety settings overrides",
+    }
+
+
+@dataclass
+class VertexAIEmbeddingOptions(BindingOptions):
+    """Options for Vertex AI text embeddings."""
+
+    _binding_name: ClassVar[str] = "vertex_ai_embedding"
+
+    project_id: str | None = None
+    location: str | None = None
+    api_endpoint: str | None = None
+    credentials_path: str | None = None
+
+    task_type: str | None = None
+    title: str | None = None
+    output_dimensionality: int | None = None
+
+    _help: ClassVar[dict[str, str]] = {
+        "project_id": "Google Cloud project ID for Vertex AI",
+        "location": "Vertex AI region (e.g., us-central1)",
+        "api_endpoint": "Custom API endpoint/host for Vertex AI",
+        "credentials_path": "Path to service account JSON credentials",
+        "task_type": "Embedding task type (e.g., RETRIEVAL_DOCUMENT, RETRIEVAL_QUERY)",
+        "title": "Optional document title hint for embeddings",
+        "output_dimensionality": "Embedding output dimension override",
+    }
+
+
 # =============================================================================
 # Binding Options for OpenAI
 # =============================================================================
