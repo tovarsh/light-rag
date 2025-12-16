@@ -91,6 +91,8 @@ class LLMConfigCache:
         self.openai_llm_options = None
         self.gemini_llm_options = None
         self.gemini_embedding_options = None
+        self.vertex_llm_options = None
+        self.vertex_embedding_options = None
         self.ollama_llm_options = None
         self.ollama_embedding_options = None
 
@@ -106,6 +108,12 @@ class LLMConfigCache:
 
             self.gemini_llm_options = GeminiLLMOptions.options_dict(args)
             logger.info(f"Gemini LLM Options: {self.gemini_llm_options}")
+
+        if args.llm_binding == "vertex_ai":
+            from lightrag.llm.binding_options import VertexAILLMOptions
+
+            self.vertex_llm_options = VertexAILLMOptions.options_dict(args)
+            logger.info(f"Vertex AI LLM Options: {self.vertex_llm_options}")
 
         # Only initialize and log Ollama LLM options when using Ollama LLM binding
         if args.llm_binding == "ollama":
@@ -153,6 +161,22 @@ class LLMConfigCache:
                     "GeminiEmbeddingOptions not available, using default configuration"
                 )
                 self.gemini_embedding_options = {}
+
+        if args.embedding_binding == "vertex_ai":
+            try:
+                from lightrag.llm.binding_options import VertexAIEmbeddingOptions
+
+                self.vertex_embedding_options = VertexAIEmbeddingOptions.options_dict(
+                    args
+                )
+                logger.info(
+                    f"Vertex AI Embedding Options: {self.vertex_embedding_options}"
+                )
+            except ImportError:
+                logger.warning(
+                    "VertexAIEmbeddingOptions not available, using default configuration"
+                )
+                self.vertex_embedding_options = {}
 
 
 def check_frontend_build():
@@ -590,9 +614,49 @@ def create_app(args):
                 base_url=args.llm_binding_host,
                 keyword_extraction=keyword_extraction,
                 **kwargs,
-            )
+        )
 
         return optimized_gemini_model_complete
+
+    def create_optimized_vertex_ai_llm_func(
+        config_cache: LLMConfigCache, args, llm_timeout: int
+    ):
+        """Create optimized Vertex AI LLM function with cached configuration"""
+
+        async def optimized_vertex_ai_model_complete(
+            prompt,
+            system_prompt=None,
+            history_messages=None,
+            keyword_extraction=False,
+            **kwargs,
+        ) -> str:
+            from lightrag.llm.vertex_ai import vertex_ai_complete_if_cache
+
+            if history_messages is None:
+                history_messages = []
+
+            kwargs["timeout"] = llm_timeout
+            if (
+                config_cache.vertex_llm_options is not None
+                and "generation_config" not in kwargs
+            ):
+                kwargs.update(config_cache.vertex_llm_options)
+
+            kwargs.setdefault("api_endpoint", args.llm_binding_host)
+            kwargs.setdefault(
+                "credentials_path", os.getenv("VERTEX_CREDENTIALS", None)
+            )
+
+            return await vertex_ai_complete_if_cache(
+                args.llm_model,
+                prompt,
+                system_prompt=system_prompt,
+                history_messages=history_messages,
+                keyword_extraction=keyword_extraction,
+                **kwargs,
+            )
+
+        return optimized_vertex_ai_model_complete
 
     def create_llm_model_func(binding: str):
         """
@@ -617,6 +681,10 @@ def create_app(args):
                 )
             elif binding == "gemini":
                 return create_optimized_gemini_llm_func(config_cache, args, llm_timeout)
+            elif binding == "vertex_ai":
+                return create_optimized_vertex_ai_llm_func(
+                    config_cache, args, llm_timeout
+                )
             else:  # openai and compatible
                 # Use optimized function with pre-processed configuration
                 return create_optimized_openai_llm_func(config_cache, args, llm_timeout)
@@ -685,6 +753,10 @@ def create_app(args):
                 from lightrag.llm.gemini import gemini_embed
 
                 provider_func = gemini_embed
+            elif binding == "vertex_ai":
+                from lightrag.llm.vertex_ai import vertex_ai_embed
+
+                provider_func = vertex_ai_embed
             elif binding == "jina":
                 from lightrag.llm.jina import jina_embed
 
@@ -840,6 +912,36 @@ def create_app(args):
                     }
                     if model:
                         kwargs["model"] = model
+                    return await actual_func(**kwargs)
+                elif binding == "vertex_ai":
+                    from lightrag.llm.vertex_ai import vertex_ai_embed
+
+                    actual_func = (
+                        vertex_ai_embed.func
+                        if isinstance(vertex_ai_embed, EmbeddingFunc)
+                        else vertex_ai_embed
+                    )
+
+                    if config_cache.vertex_embedding_options is not None:
+                        vertex_options = config_cache.vertex_embedding_options
+                    else:
+                        from lightrag.llm.binding_options import VertexAIEmbeddingOptions
+
+                        vertex_options = VertexAIEmbeddingOptions.options_dict(args)
+
+                    kwargs = {
+                        "texts": texts,
+                        "model": model or "text-embedding-004",
+                        "project_id": vertex_options.get("project_id"),
+                        "location": vertex_options.get("location"),
+                        "api_endpoint": host,
+                        "credentials_path": vertex_options.get("credentials_path"),
+                        "task_type": vertex_options.get("task_type"),
+                        "title": vertex_options.get("title"),
+                        "output_dimensionality": vertex_options.get(
+                            "output_dimensionality"
+                        ),
+                    }
                     return await actual_func(**kwargs)
                 else:  # openai and compatible
                     from lightrag.llm.openai import openai_embed
